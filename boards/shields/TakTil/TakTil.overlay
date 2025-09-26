@@ -30,7 +30,7 @@
                     <&pro_micro 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
     };
 
-    default_transform: keymap_transform_0{
+    default_transform: keymap_transform_0 {
         compatible = "zmk,matrix-transform";
         rows = <4>;
         columns = <6>;
@@ -72,5 +72,5 @@
         /* Communication timeout */
         i2c-timeout-ms = <10>;
     };
-}; 
+    }; 
 };
