@@ -74,4 +74,4 @@
         /* Communication timeout */
         i2c-timeout-ms = <10>;
     };
-    }; 
+}; 
