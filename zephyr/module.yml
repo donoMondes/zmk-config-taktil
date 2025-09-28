@@ -1,7 +1,6 @@
 name: zmk-keyboard-taktil
 build:
-  cmake: ./drivers/sensor
+  cmake: .
   kconfig: Kconfig
   settings:
-    board_root: .
     dts_root: .
