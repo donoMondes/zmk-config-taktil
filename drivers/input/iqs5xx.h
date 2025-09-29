@@ -20,6 +20,9 @@
 #define IQS5XX_ALP_RESEED BIT(4)
 #define IQS5XX_RESEED BIT(3)
 
+// Report rate for the active mode
+#define IQS5XX_REPORT_RATE_ACTIVE_MODE 0x057A // 2 bytes
+
 #define IQS5XX_SYSTEM_CONFIG_0 0x058E
 // System Config 0 bits.
 #define IQS5XX_MANUAL_CONTROL BIT(7)
@@ -49,6 +52,15 @@
 #define IQS5XX_MAV_FILTER BIT(1)
 #define IQS5XX_IIR_SELECT BIT(2)
 #define IQS5XX_ALP_COUNT_FILTER BIT(3)
+
+// Max touch point
+#define IQS5XX_MAX_MULTI_TOUCHES 0x066A
+
+// Palm reject treshold area size
+#define IQS5XX_PALM_REJECT_THRESHOLD 0x066C
+
+// Palm reject disable timeout
+#define IQS5XX_PALM_REJECT_TIMEOUT 0x066D
 
 #define IQS5XX_SYSTEM_INFO_0 0x000F
 // System Info 0 bits.
@@ -110,6 +122,9 @@
 #define IQS5XX_FLIP_X BIT(0)
 #define IQS5XX_FLIP_Y BIT(1)
 #define IQS5XX_SWITCH_XY_AXIS BIT(2)
+#define IQS5XX_ALLOW_PALM_REJECT BIT(3)
+
+#define IQS5XX_MULTI_TOUCH_OFFSET 0x7
 
 struct iqs5xx_config {
     struct i2c_dt_spec i2c;
@@ -132,6 +147,17 @@ struct iqs5xx_config {
     bool flip_x;
     bool flip_y;
 
+    // Report rate config
+    uint16_t report_rate_active_mode;
+    
+    // Palm rejection
+    bool palm_rejection;
+    uint8_t palm_reject_threshold;
+    uint8_t palm_reject_timeout;
+    
+    // Maximum touch points
+    uint8_t max_touch_number;
+    
     // Sensitivity. configuration.
     uint8_t bottom_beta;
     uint8_t stationary_threshold;

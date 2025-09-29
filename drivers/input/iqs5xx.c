@@ -245,6 +245,34 @@ static int iqs5xx_setup_device(const struct device *dev) {
         return ret;
     }
 
+    // Change report rate value
+    ret = iqs5xx_write_reg16(dev, IQS5XX_REPORT_RATE_ACTIVE_MODE,config->report_rate_active_mode);
+    if (ret < 0) {
+        LOG_ERR("Failed to change report rate: %d", ret);
+        return ret;
+    }
+
+    // Change Maximum number of touch point
+    ret = iqs5xx_write_reg8(dev, IQS5XX_MAX_MULTI_TOUCHES,config->max_touch_number);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure maximum number of touch point: %d", ret);
+        return ret;
+    }
+
+    // Configure the palm reject area size threshold
+    ret = iqs5xx_write_reg8(dev, IQS5XX_PALM_REJECT_THRESHOLD,config->palm_reject_threshold);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure the plam reject threshold: %d", ret);
+        return ret;
+    }
+
+    // Configure the palm reject timeout
+    ret = iqs5xx_write_reg8(dev, IQS5XX_PALM_REJECT_TIMEOUT,config->palm_reject_timeout);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure the palm reject timeout: %d", ret);
+        return ret;
+    }
+
     ret = iqs5xx_write_reg8(dev, IQS5XX_BOTTOM_BETA, config->bottom_beta);
     if (ret < 0) {
         LOG_ERR("Failed to set bottom beta: %d", ret);
@@ -302,6 +330,7 @@ static int iqs5xx_setup_device(const struct device *dev) {
     xy_config |= config->flip_x ? IQS5XX_FLIP_X : 0;
     xy_config |= config->flip_y ? IQS5XX_FLIP_Y : 0;
     xy_config |= config->switch_xy ? IQS5XX_SWITCH_XY_AXIS : 0;
+    xy_config |= config->palm_rejection ? IQS5XX_ALLOW_PALM_REJECT : 0;
     ret = iqs5xx_write_reg8(dev, IQS5XX_XY_CONFIG_0, xy_config);
     if (ret < 0) {
         LOG_ERR("Failed to configure axes: %d", ret);
@@ -417,6 +446,11 @@ static int iqs5xx_init(const struct device *dev) {
         .switch_xy = DT_INST_PROP(n, switch_xy),                                                   \
         .flip_x = DT_INST_PROP(n, flip_x),                                                         \
         .flip_y = DT_INST_PROP(n, flip_y),                                                         \
+        .report_rate_active_mode = DT_INST_PROP_OR(n, report_rate_active_mode, 15),                \
+        .palm_rejection = DT_INST_PROP(n,palm_rejection),                                          \
+        .palm_reject_threshold = DT_INST_PROP_OR(n, palm_reject_threshold, 100),                   \
+        .palm_reject_timeout = DT_INST_PROP_OR(n, palm_reject_timeout, 1),                         \
+        .max_touch_number = DT_INST_PROP_OR(n, max_touch_number, 5),                               \
         .bottom_beta = DT_INST_PROP_OR(n, bottom_beta, 5),                                         \
         .stationary_threshold = DT_INST_PROP_OR(n, stationary_threshold, 5),                       \
     };                                                                                             \
