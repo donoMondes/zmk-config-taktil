@@ -130,6 +130,8 @@
 
 #define IQS5XX_NEXT_TOUCH_OFFSET 0x7
 
+#define IQS5XX_INPUT_MAX_TOUCHES 5
+
 struct iqs5xx_config {
     struct i2c_dt_spec i2c;
     struct gpio_dt_spec rdy_gpio;

@@ -69,8 +69,8 @@ static void iqs5xx_work_handler(struct k_work *work) {
     int ret;
 
     static uint8_t prev_points;
-    struct iqs5xx_point_data point_data[config->max_touch_number];
-    static struct iqs5xx_point_data prev_point_data[config->max_touch_number];
+    struct iqs5xx_point_data point_data[IQS5XX_INPUT_MAX_TOUCHES];
+    static struct iqs5xx_point_data prev_point_data[IQS5XX_INPUT_MAX_TOUCHES];
 
     uint8_t prev_finger;
 	uint8_t finger;
