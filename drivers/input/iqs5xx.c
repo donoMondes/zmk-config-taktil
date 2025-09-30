@@ -158,6 +158,7 @@ static void iqs5xx_work_handler(struct k_work *work) {
             {
 				break;
 			}
+        }
 		if(finger == num_fingers)
         {
             if(config->max_touch_number>1)
