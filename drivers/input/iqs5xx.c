@@ -129,41 +129,45 @@ static void iqs5xx_work_handler(struct k_work *work) {
         goto end_comm;
     }
 
+    bool tp_movement = (sys_info_1 & IQS5XX_TP_MOVEMENT) != 0;
 
-    ret = iqs5xx_read_reg8(dev, IQS5XX_NUM_FINGERS, &num_fingers);
-    if (ret < 0) {
-        LOG_ERR("Failed to read number of fingers: %d", ret);
-        goto end_comm;
-    }
-    for(uint8_t finger_idx = 0; finger_idx<num_fingers;finger_idx++)
-    {
-        if(config->max_touch_number>1)
+    // Handle movement and gestures.
+    if (tp_movement) {
+        ret = iqs5xx_read_reg8(dev, IQS5XX_NUM_FINGERS, &num_fingers);
+        if (ret < 0) {
+            LOG_ERR("Failed to read number of fingers: %d", ret);
+            goto end_comm;
+        }
+        for(uint8_t finger_idx = 0; finger_idx<num_fingers;finger_idx++)
         {
-            // current absolute slot for absolute position
-            point_data[finger_idx].id = finger_idx;
-            input_report_abs(dev,INPUT_ABS_MT_SLOT,point_data[finger_idx].id,true,K_FOREVER);
-            if(finger_idx<config->max_touch_number)
+            if(config->max_touch_number>1)
             {
-                uint16_t abs_x, abs_y;
-                uint16_t current_reg_abs_x = (uint16_t)(IQS5XX_ABS_X + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
-                uint16_t current_reg_abs_y = (uint16_t)(IQS5XX_ABS_Y + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
-                ret = iqs5xx_read_reg16(dev, current_reg_abs_x, &abs_x);
-                if (ret < 0) {
-                    goto end_comm;
-                }
-                ret = iqs5xx_read_reg16(dev, current_reg_abs_y, &abs_y);
-                if (ret < 0) {
-                    goto end_comm;
-                }
-                point_data[finger_idx].abs_x = abs_x;
-                point_data[finger_idx].abs_y = abs_y;
-
-                if(abs_x!=0 || abs_y!=0)
+                // current absolute slot for absolute position
+                point_data[finger_idx].id = finger_idx;
+                input_report_abs(dev,INPUT_ABS_MT_SLOT,point_data[finger_idx].id,false,K_FOREVER);
+                if(finger_idx<config->max_touch_number)
                 {
-                    LOG_INF("ABSPOS[%d] , abs_x : %u, abs_y : %u",point_data[finger_idx].id,point_data[finger_idx].abs_x,point_data[finger_idx].abs_y);
-                    input_report_abs(dev, INPUT_ABS_X, point_data[finger_idx].abs_x, false, K_FOREVER);
-                    input_report_abs(dev, INPUT_ABS_Y, point_data[finger_idx].abs_y, false, K_FOREVER);
-                    input_report_key(dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+                    uint16_t abs_x, abs_y;
+                    uint16_t current_reg_abs_x = (uint16_t)(IQS5XX_ABS_X + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
+                    uint16_t current_reg_abs_y = (uint16_t)(IQS5XX_ABS_Y + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
+                    ret = iqs5xx_read_reg16(dev, current_reg_abs_x, &abs_x);
+                    if (ret < 0) {
+                        goto end_comm;
+                    }
+                    ret = iqs5xx_read_reg16(dev, current_reg_abs_y, &abs_y);
+                    if (ret < 0) {
+                        goto end_comm;
+                    }
+                    point_data[finger_idx].abs_x = abs_x;
+                    point_data[finger_idx].abs_y = abs_y;
+
+                    if(abs_x!=0 || abs_y!=0)
+                    {
+                        LOG_INF("ABSPOS[%d] , abs_x : %u, abs_y : %u",point_data[finger_idx].id,point_data[finger_idx].abs_x,point_data[finger_idx].abs_y);
+                        input_report_abs(dev, INPUT_ABS_X, point_data[finger_idx].abs_x, false, K_FOREVER);
+                        input_report_abs(dev, INPUT_ABS_Y, point_data[finger_idx].abs_y, false, K_FOREVER);
+                        input_report_key(dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+                    }
                 }
             }
         }
