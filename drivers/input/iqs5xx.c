@@ -285,6 +285,20 @@ static int iqs5xx_setup_device(const struct device *dev) {
         return ret;
     }
 
+    // Change resolution
+
+    ret = iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_X,config->resolution_x);
+    if (ret < 0) {
+        LOG_ERR("Failed to change x axis resolution: %d", ret);
+        return ret;
+    }
+
+    ret = iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_Y,config->resolution_y);
+    if (ret < 0) {
+        LOG_ERR("Failed to change y axis resolution: %d", ret);
+        return ret;
+    }
+
     // TODO: Expose these through dts bindings.
     // Set filter settings with:
     // - IIR filter enabled
@@ -451,6 +465,8 @@ static int iqs5xx_init(const struct device *dev) {
         .palm_reject_threshold = DT_INST_PROP_OR(n, palm_reject_threshold, 100),                   \
         .palm_reject_timeout = DT_INST_PROP_OR(n, palm_reject_timeout, 1),                         \
         .max_touch_number = DT_INST_PROP_OR(n, max_touch_number, 5),                               \
+        .resolution_x = DT_INST_PROP_OR(n, resolution_x, 3072),                                    \
+        .resolution_y = DT_INST_PROP_OR(n, resolution_y, 2048),                                    \
         .bottom_beta = DT_INST_PROP_OR(n, bottom_beta, 5),                                         \
         .stationary_threshold = DT_INST_PROP_OR(n, stationary_threshold, 5),                       \
     };                                                                                             \

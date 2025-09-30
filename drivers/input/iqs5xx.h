@@ -117,6 +117,10 @@
 #define IQS5XX_SCROLL BIT(1)
 #define IQS5XX_ZOOM BIT(2)
 
+// Resolution configuration
+#define IQS5XX_RESOLUTION_X 0x066E
+#define IQS5XX_RESOLUTION_Y 0x0670
+
 // Axes configuration.
 #define IQS5XX_XY_CONFIG_0 0x0669
 #define IQS5XX_FLIP_X BIT(0)
@@ -157,6 +161,10 @@ struct iqs5xx_config {
     
     // Maximum touch points
     uint8_t max_touch_number;
+
+    // Resolution
+    uint16_t resolution_x;
+    uint16_t resolution_y;
     
     // Sensitivity. configuration.
     uint8_t bottom_beta;
