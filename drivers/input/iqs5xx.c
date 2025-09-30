@@ -61,29 +61,19 @@ static int iqs5xx_end_comm_window(const struct device *dev) {
     return i2c_write_dt(&config->i2c, buf, sizeof(buf));
 }
 
-static void iqs5xx_button_release_work_handler(struct k_work *work) {
-    struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-    struct iqs5xx_data *data = CONTAINER_OF(dwork, struct iqs5xx_data, button_release_work);
-
-    // TODO: This loop should only deactivate one button.
-    // Log a warning when that is not the case.
-    for (int i = 0; i < 3; i++) {
-        LOG_INF("Releasing synthetic button");
-        if (data->buttons_pressed & BIT(i)) {
-            input_report_key(data->dev, INPUT_BTN_0 + i, 0, true, K_FOREVER);
-            // Turn off the bit.
-            // NOTE: This is a potential race.
-            data->buttons_pressed &= ~BIT(i);
-        }
-    }
-}
-
 static void iqs5xx_work_handler(struct k_work *work) {
     struct iqs5xx_data *data = CONTAINER_OF(work, struct iqs5xx_data, work);
     const struct device *dev = data->dev;
     const struct iqs5xx_config *config = dev->config;
     uint8_t sys_info_0, sys_info_1, gesture_events_0, gesture_events_1, num_fingers;
     int ret;
+
+    static uint8_t prev_points;
+    struct iqs5xx_point_data point_data[config->max_touch_number];
+    static struct iqs5xx_point_data prev_point_data[config->max_touch_number];
+
+    uint8_t prev_finger;
+	uint8_t finger;
 
     // Read system info registers.
     ret = iqs5xx_read_reg8(dev, IQS5XX_SYSTEM_INFO_0, &sys_info_0);
@@ -119,107 +109,69 @@ static void iqs5xx_work_handler(struct k_work *work) {
     }
 
     bool tp_movement = (sys_info_1 & IQS5XX_TP_MOVEMENT) != 0;
-    bool scroll = (gesture_events_1 & IQS5XX_SCROLL) != 0;
-    if (!scroll) {
-        // Clear accumulators if we're not actively scrolling.
-        data->scroll_x_acc = 0;
-        data->scroll_y_acc = 0;
-    }
-
-    uint16_t button_code;
-    bool button_pressed = false;
-    if (gesture_events_0 & IQS5XX_SINGLE_TAP) {
-        button_pressed = true;
-        button_code = INPUT_BTN_0;
-    } else if (gesture_events_1 & IQS5XX_TWO_FINGER_TAP) {
-        button_pressed = true;
-        button_code = INPUT_BTN_1;
-    }
-
-    bool hold_became_active = (gesture_events_0 & IQS5XX_PRESS_AND_HOLD) && !data->active_hold;
-    bool hold_released = !(gesture_events_0 & IQS5XX_PRESS_AND_HOLD) && data->active_hold;
-
-    int16_t rel_x, rel_y;
-    if (tp_movement || scroll) {
-        ret = iqs5xx_read_reg16(dev, IQS5XX_REL_X, (uint16_t *)&rel_x);
-        if (ret < 0) {
-            LOG_ERR("Failed to read relative X: %d", ret);
-            goto end_comm;
-        }
-
-        ret = iqs5xx_read_reg16(dev, IQS5XX_REL_Y, (uint16_t *)&rel_y);
-        if (ret < 0) {
-            LOG_ERR("Failed to read relative Y: %d", ret);
-            goto end_comm;
-        }
-    }
 
     // Handle movement and gestures.
-    //
-    // Each one of these branches needs to send the last report it makes as
-    // sync to ensure that the input subsystem processes things in order.
-    if (hold_became_active) {
-        LOG_INF("Hold became active");
-        input_report_key(dev, LEFT_BUTTON_CODE, 1, true, K_FOREVER);
-        data->active_hold = true;
-    } else if (hold_released) {
-        LOG_INF("Hold became inactive");
-        input_report_key(dev, LEFT_BUTTON_CODE, 0, true, K_FOREVER);
-        data->active_hold = false;
-    } else if (button_pressed) {
-        // Cancel any pending release.
-        k_work_cancel_delayable(&data->button_release_work);
-
-        // Press the button immediately.
-        input_report_key(dev, button_code, 1, true, K_FOREVER);
-        data->buttons_pressed |= BIT(button_code - INPUT_BTN_0);
-
-        // Schedule release after 100ms.
-        k_work_schedule(&data->button_release_work, K_MSEC(100));
-    } else if (scroll) {
-        // TODO: Expose this divisor.
-        int16_t scroll_div = 32;
-
-        // Only one scrolling direction is valid at a time.
-        // End the communication right after reporting the movement.
-        if (rel_x != 0) {
-            // By default the x axis is already "natural".
-            if (!config->natural_scroll_x) {
-                rel_x *= -1;
-            }
-            data->scroll_x_acc += rel_x;
-            if (abs(data->scroll_x_acc) >= scroll_div) {
-                input_report_rel(dev, INPUT_REL_HWHEEL, data->scroll_x_acc / scroll_div, true,
-                                K_FOREVER);
-                data->scroll_x_acc %= scroll_div;
-            }
-            goto end_comm;
-        }
-        if (rel_y != 0) {
-            if (config->natural_scroll_y) {
-                rel_y *= -1;
-            }
-            data->scroll_y_acc += rel_y;
-            if (abs(data->scroll_y_acc) >= scroll_div) {
-                input_report_rel(dev, INPUT_REL_WHEEL, data->scroll_y_acc / scroll_div, true,
-                                 K_FOREVER);
-                data->scroll_y_acc %= scroll_div;
-            }
-
-            goto end_comm;
-        }
-    } else if (tp_movement) {
+    if (tp_movement) {
         ret = iqs5xx_read_reg8(dev, IQS5XX_NUM_FINGERS, &num_fingers);
         if (ret < 0) {
             LOG_ERR("Failed to read number of fingers: %d", ret);
             goto end_comm;
         }
+        for(uint8_t finger_idx = 0; finger_idx<num_fingers;finger_idx++)
+        {
+            if(config->max_touch_number>1)
+            {
+                // current absolute slot for absolute position
+                point_data[finger_idx].id = finger_idx;
+                input_report_abs(dev,INPUT_ABS_MT_SLOT,point_data[finger_idx].id,true,K_FOREVER);
+                if(finger_idx<config->max_touch_number)
+                {
+                    uint16_t abs_x, abs_y;
+                    uint16_t current_reg_abs_x = (uint16_t)(IQS5XX_ABS_X + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
+                    uint16_t current_reg_abs_y = (uint16_t)(IQS5XX_ABS_Y + (finger_idx * IQS5XX_NEXT_TOUCH_OFFSET));
+                    ret = iqs5xx_read_reg16(dev, current_reg_abs_x, &abs_x);
+                    if (ret < 0) {
+                        goto end_comm;
+                    }
+                    ret = iqs5xx_read_reg16(dev, current_reg_abs_y, &abs_y);
+                    if (ret < 0) {
+                        goto end_comm;
+                    }
+                    point_data[finger_idx].abs_x = abs_x;
+                    point_data[finger_idx].abs_y = abs_y;
 
-        if (rel_x != 0 || rel_y != 0) {
-            input_report_rel(dev, INPUT_REL_X, rel_x, false, K_FOREVER);
-            input_report_rel(dev, INPUT_REL_Y, rel_y, true, K_FOREVER);
+                    if(abs_x!=0 || abs_y!=0)
+                    {
+                        input_report_abs(dev, INPUT_ABS_X, point_data[finger_idx].abs_x, false, K_FOREVER);
+                        input_report_abs(dev, INPUT_ABS_Y, point_data[finger_idx].abs_y, false, K_FOREVER);
+                        input_report_key(dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+                    }
+                }
+            }
         }
     }
+    for(prev_finger = 0; prev_finger < prev_points ; prev_finger++)
+    {
+        /* We look for the prev_point in the current points list */
+		for (finger = 0; finger < num_fingers; finger++) {
+			if (prev_point_data[prev_finger].id == point_data[finger].id) 
+            {
+				break;
+			}
+		if(finger == num_fingers)
+        {
+            if(config->max_touch_number>1)
+            {
+                input_report_abs(dev,INPUT_ABS_MT_SLOT,point_data[prev_finger].id,true,K_FOREVER);
+            }
+            input_report_abs(dev, INPUT_ABS_X, prev_point_data[prev_finger].abs_x, false, K_FOREVER);
+            input_report_abs(dev, INPUT_ABS_Y, prev_point_data[prev_finger].abs_y, false, K_FOREVER);
+            input_report_key(dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+        }
+    }
+
+    memcpy(prev_point_data,point_data,sizeof(point_data));
+    prev_points = num_fingers;
 
 end_comm:
     // End communication window.
@@ -380,7 +332,6 @@ static int iqs5xx_init(const struct device *dev) {
 
     data->dev = dev;
     k_work_init(&data->work, iqs5xx_work_handler);
-    k_work_init_delayable(&data->button_release_work, iqs5xx_button_release_work_handler);
 
     // Configure reset GPIO if available.
     if (config->reset_gpio.port) {

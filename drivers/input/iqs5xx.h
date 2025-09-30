@@ -128,7 +128,7 @@
 #define IQS5XX_SWITCH_XY_AXIS BIT(2)
 #define IQS5XX_ALLOW_PALM_REJECT BIT(3)
 
-#define IQS5XX_MULTI_TOUCH_OFFSET 0x7
+#define IQS5XX_NEXT_TOUCH_OFFSET 0x7
 
 struct iqs5xx_config {
     struct i2c_dt_spec i2c;
@@ -185,3 +185,9 @@ struct iqs5xx_data {
     int16_t scroll_x_acc;
     int16_t scroll_y_acc;
 };
+
+struct iqs5xx_point_data {
+    uint8_t id;     //Touch id
+    uint16_t abs_x; //Touch absolute position on the x axis
+    uint16_t abs_y; //Touch absolute position on the y axis
+}
