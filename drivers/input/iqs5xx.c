@@ -446,7 +446,7 @@ static int iqs5xx_init(const struct device *dev) {
         .switch_xy = DT_INST_PROP(n, switch_xy),                                                   \
         .flip_x = DT_INST_PROP(n, flip_x),                                                         \
         .flip_y = DT_INST_PROP(n, flip_y),                                                         \
-        .report_rate_active_mode = DT_INST_PROP_OR(n, report_rate_active_mode, 15),                \
+        .report_rate_active_mode = DT_INST_PROP_OR(n, report_rate_active_mode, 10),                \
         .palm_rejection = DT_INST_PROP(n,palm_rejection),                                          \
         .palm_reject_threshold = DT_INST_PROP_OR(n, palm_reject_threshold, 100),                   \
         .palm_reject_timeout = DT_INST_PROP_OR(n, palm_reject_timeout, 1),                         \
