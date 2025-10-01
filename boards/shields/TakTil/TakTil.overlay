@@ -70,6 +70,9 @@
         bottom-beta = <5>;
         stationary-threshold = <5>;
 
+        resolution_x = <1920>;
+        resolution_y = <1080>;
+
         switch-xy;
 
         reset-gpios = <&pro_micro 18 GPIO_ACTIVE_LOW>; /* P0.10 */
