@@ -67,13 +67,16 @@ static void iqs5xx_button_release_work_handler(struct k_work *work) {
 
     // TODO: This loop should only deactivate one button.
     // Log a warning when that is not the case.
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 8; i++) {
         LOG_INF("Releasing synthetic button");
         if (data->buttons_pressed & BIT(i)) {
             input_report_key(data->dev, INPUT_BTN_0 + i, 0, true, K_FOREVER);
             // Turn off the bit.
             // NOTE: This is a potential race.
-            data->buttons_pressed &= ~BIT(i);
+            if(i < 3)
+            {
+                data->buttons_pressed &= ~BIT(i);
+            }
         }
     }
 }
@@ -120,6 +123,7 @@ static void iqs5xx_work_handler(struct k_work *work) {
 
     bool tp_movement = (sys_info_1 & IQS5XX_TP_MOVEMENT) != 0;
     bool scroll = (gesture_events_1 & IQS5XX_SCROLL) != 0;
+    bool zoom = (gesture_events_1 & IQS5XX_ZOOM) !=0;
     if (!scroll) {
         // Clear accumulators if we're not actively scrolling.
         data->scroll_x_acc = 0;
@@ -140,7 +144,7 @@ static void iqs5xx_work_handler(struct k_work *work) {
     bool hold_released = !(gesture_events_0 & IQS5XX_PRESS_AND_HOLD) && data->active_hold;
 
     int16_t rel_x, rel_y;
-    if (tp_movement || scroll) {
+    if (tp_movement || scroll || zoom) {
         ret = iqs5xx_read_reg16(dev, IQS5XX_REL_X, (uint16_t *)&rel_x);
         if (ret < 0) {
             LOG_ERR("Failed to read relative X: %d", ret);
@@ -208,7 +212,18 @@ static void iqs5xx_work_handler(struct k_work *work) {
 
             goto end_comm;
         }
-    } else if (tp_movement) {
+    }
+    else if (zoom) {
+        if(rel_x < 0){
+            input_report_key(dev, INPUT_BTN_7, 1, true,K_FOREVER);
+            goto end_comm;
+        }
+        else if (rel_x > 0){
+            input_report_key(dev, INPUT_BTN_8, 1, true,K_FOREVER);
+            goto end_comm;
+        }        
+    }
+    else if (tp_movement) {
         ret = iqs5xx_read_reg8(dev, IQS5XX_NUM_FINGERS, &num_fingers);
         if (ret < 0) {
             LOG_ERR("Failed to read number of fingers: %d", ret);
