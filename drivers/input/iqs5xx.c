@@ -306,12 +306,12 @@ static int iqs5xx_setup_device(const struct device *dev) {
     // - MAV filter enabled
     // - IIR select disabled (dynamic IIR)
     // - ALP count filter enabled
-    // ret = iqs5xx_write_reg8(dev, IQS5XX_FILTER_SETTINGS,
-    //                         IQS5XX_IIR_FILTER | IQS5XX_MAV_FILTER | IQS5XX_ALP_COUNT_FILTER);
-    // if (ret < 0) {
-    //     LOG_ERR("Failed to configure filter settings: %d", ret);
-    //     return ret;
-    // }
+    ret = iqs5xx_write_reg8(dev, IQS5XX_FILTER_SETTINGS,
+                            IQS5XX_IIR_FILTER | IQS5XX_MAV_FILTER | IQS5XX_ALP_COUNT_FILTER);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure filter settings: %d", ret);
+        return ret;
+    }
 
     uint8_t single_finger_gestures = 0;
     single_finger_gestures |= config->one_finger_tap ? IQS5XX_SINGLE_TAP : 0;
