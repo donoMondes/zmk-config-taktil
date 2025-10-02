@@ -85,17 +85,20 @@ static void iqs5xx_work_handler(struct k_work *work) {
     struct iqs5xx_data *data = CONTAINER_OF(work, struct iqs5xx_data, work);
     const struct device *dev = data->dev;
     const struct iqs5xx_config *config = dev->config;
-    uint8_t sys_info_0, sys_info_1, gesture_events_0, gesture_events_1, num_fingers;
+    uint8_t gesture_events_0, gesture_events_1, num_fingers;
     int ret;
 
+    iqs5xx_sys_info_0 sys_info_0;
+    iqs5xx_sys_info_1 sys_info_1;
+
     // Read system info registers.
-    ret = iqs5xx_read_reg8(dev, IQS5XX_SYSTEM_INFO_0, &sys_info_0);
+    ret = iqs5xx_read_reg8(dev, IQS5XX_SYSTEM_INFO_0, &sys_info_0.data);
     if (ret < 0) {
         LOG_ERR("Failed to read system info 0: %d", ret);
         goto end_comm;
     }
 
-    ret = iqs5xx_read_reg8(dev, IQS5XX_SYSTEM_INFO_1, &sys_info_1);
+    ret = iqs5xx_read_reg8(dev, IQS5XX_SYSTEM_INFO_1, &sys_info_1.data);
     if (ret < 0) {
         LOG_ERR("Failed to read system info 1: %d", ret);
         goto end_comm;
@@ -114,14 +117,13 @@ static void iqs5xx_work_handler(struct k_work *work) {
     }
 
     // Handle reset indication.
-    if (sys_info_0 & IQS5XX_SHOW_RESET) {
+    if (sys_info_0.show_reset) {
         LOG_INF("Device reset detected");
         // Acknowledge reset.
         iqs5xx_write_reg8(dev, IQS5XX_SYSTEM_CONTROL_0, IQS5XX_ACK_RESET);
         goto end_comm;
     }
 
-    bool tp_movement = (sys_info_1 & IQS5XX_TP_MOVEMENT) != 0;
     bool scroll = (gesture_events_1 & IQS5XX_SCROLL) != 0;
     bool zoom = (gesture_events_1 & IQS5XX_ZOOM) !=0;
     if (!scroll) {
@@ -144,7 +146,7 @@ static void iqs5xx_work_handler(struct k_work *work) {
     bool hold_released = !(gesture_events_0 & IQS5XX_PRESS_AND_HOLD) && data->active_hold;
 
     int16_t rel_x, rel_y;
-    if (tp_movement || scroll || zoom) {
+    if (sys_info_1.tp_movement || scroll || zoom ) {
         ret = iqs5xx_read_reg16(dev, IQS5XX_REL_X, (uint16_t *)&rel_x);
         if (ret < 0) {
             LOG_ERR("Failed to read relative X: %d", ret);
@@ -223,7 +225,7 @@ static void iqs5xx_work_handler(struct k_work *work) {
             goto end_comm;
         }        
     }
-    else if (tp_movement) {
+    else if (sys_info_1.tp_movement) {
         ret = iqs5xx_read_reg8(dev, IQS5XX_NUM_FINGERS, &num_fingers);
         if (ret < 0) {
             LOG_ERR("Failed to read number of fingers: %d", ret);
