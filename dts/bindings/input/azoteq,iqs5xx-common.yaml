@@ -60,7 +60,7 @@ properties:
   palm_reject_threshold:
     type: int
     description: "Area size for the palm reject activation"
-    default: 100
+    default: 50
 
   palm_reject_timeout:
     type: int
