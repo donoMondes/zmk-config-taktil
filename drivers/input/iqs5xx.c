@@ -252,20 +252,18 @@ static int iqs5xx_setup_device(const struct device *dev) {
     const struct iqs5xx_config *config = dev->config;
     int ret;
 
-    // Enable event mode and trackpad events.
-    ret = iqs5xx_write_reg8(dev, IQS5XX_SYSTEM_CONFIG_1,
-                            IQS5XX_EVENT_MODE | IQS5XX_TP_EVENT | IQS5XX_GESTURE_EVENT);
-    if (ret < 0) {
-        LOG_ERR("Failed to configure event mode: %d", ret);
-        return ret;
-    }
+    // Change resolution
+    ret = iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_X,config->resolution_x);
+    ret |= iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_Y,config->resolution_y);
 
     // Change report rate value
-    ret = iqs5xx_write_reg16(dev, IQS5XX_REPORT_RATE_ACTIVE_MODE,config->report_rate_active_mode);
-    if (ret < 0) {
-        LOG_ERR("Failed to change report rate: %d", ret);
-        return ret;
-    }
+    ret |= iqs5xx_write_reg16(dev, IQS5XX_REPORT_RATE_ACTIVE_MODE,config->report_rate_active_mode);
+    ret |= iqs5xx_write_reg16(dev, IQS5XX_REPORT_RATE_IDLE_TOUCH_MODE,config->report_rate_active_mode);
+    ret |= iqs5xx_write_reg16(dev, IQS5XX_REPORT_RATE_IDLE_MODE,config->report_rate_active_mode);
+
+    // Enable event mode and trackpad events.
+    ret |= iqs5xx_write_reg8(dev, IQS5XX_SYSTEM_CONFIG_1,
+                            IQS5XX_EVENT_MODE | IQS5XX_TP_EVENT | IQS5XX_GESTURE_EVENT | IQS5XX_TOUCH_EVENT);
 
     // Change Maximum number of touch point
     ret = iqs5xx_write_reg8(dev, IQS5XX_MAX_MULTI_TOUCHES,config->max_touch_number);
@@ -300,20 +298,6 @@ static int iqs5xx_setup_device(const struct device *dev) {
         return ret;
     }
 
-    // Change resolution
-
-    ret = iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_X,config->resolution_x);
-    if (ret < 0) {
-        LOG_ERR("Failed to change x axis resolution: %d", ret);
-        return ret;
-    }
-
-    ret = iqs5xx_write_reg16(dev, IQS5XX_RESOLUTION_Y,config->resolution_y);
-    if (ret < 0) {
-        LOG_ERR("Failed to change y axis resolution: %d", ret);
-        return ret;
-    }
-
     // TODO: Expose these through dts bindings.
     // Set filter settings with:
     // - IIR filter enabled
@@ -336,21 +320,31 @@ static int iqs5xx_setup_device(const struct device *dev) {
         LOG_ERR("Failed to configure single finger gestures: %d", ret);
         return ret;
     }
-
-    // Configure the hold time for the press and hold gesture.
-    ret = iqs5xx_write_reg16(dev, IQS5XX_HOLD_TIME, config->press_and_hold_time);
-    if (ret < 0) {
-        LOG_ERR("Failed to configure the hold time: %d", ret);
-        return ret;
-    }
-
+    
     uint8_t two_finger_gestures = 0;
     two_finger_gestures |= config->two_finger_tap ? IQS5XX_TWO_FINGER_TAP : 0;
     two_finger_gestures |= config->scroll ? IQS5XX_SCROLL : 0;
+    two_finger_gestures |= IQS5XX_ZOOM;
     // Configure multi finger gestures.
-    ret = iqs5xx_write_reg8(dev, IQS5XX_MULTI_FINGER_GESTURES_CONF, two_finger_gestures);
+    ret |= iqs5xx_write_reg8(dev, IQS5XX_MULTI_FINGER_GESTURES_CONF, two_finger_gestures);
     if (ret < 0) {
         LOG_ERR("Failed to configure multi finger gestures: %d", ret);
+        return ret;
+    }
+
+    // Configure the hold time for the press and hold gesture.
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_TAP_TIME, DEFAULT_TAP_TIME);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_TAP_DISTANCE, DEFAULT_TAP_DISTANCE);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_HOLD_TIME, DEFAULT_HOLD_TIME);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_SWIPE_INIT_TIME, DEFAULT_SWIPE_INITIAL_TIME);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_SWIPE_INIT_DISTANCE, DEFAULT_SWIPE_INITIAL_DISTANCE);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_SWIPE_CONSEC_TIME, DEFAULT_SWIPE_CONSECUTIVE_TIME);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_SWIPE_CONSEC_DISTANCE, DEFAULT_SWIPE_CONSECUTIVE_DISTANCE);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_SCROLL_INIT_DISTANCE, DEFAULT_SCROLL_INITIAL_DISTANCE);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_ZOOM_INIT_DISTANCE, DEFAULT_ZOOM_INITIAL_DISTANCE);
+    ret |=iqs5xx_write_reg16(dev, IQS5XX_ZOOM_CONSEC_DISTANCE, DEFAULT_ZOOM_CONSECUTIVE_DISTANCE);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure timing gesture settings: %d", ret);
         return ret;
     }
 
@@ -367,7 +361,7 @@ static int iqs5xx_setup_device(const struct device *dev) {
     }
 
     // Configure system settings.
-    ret = iqs5xx_write_reg8(dev, IQS5XX_SYSTEM_CONFIG_0, IQS5XX_SETUP_COMPLETE | IQS5XX_WDT);
+    ret = iqs5xx_write_reg8(dev, IQS5XX_SYSTEM_CONFIG_0, IQS5XX_SETUP_COMPLETE | IQS5XX_WDT | IQS5XX_REATI);
     if (ret < 0) {
         LOG_ERR("Failed to configure system: %d", ret);
         return ret;
