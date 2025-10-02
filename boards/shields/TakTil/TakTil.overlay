@@ -70,8 +70,8 @@
         bottom-beta = <2>;
         stationary-threshold = <5>;
 
-        resolution_x = <2560>;
-        resolution_y = <1440>;
+        resolution_x = <3072>;
+        resolution_y = <2048>;
 
         switch-xy;
 
