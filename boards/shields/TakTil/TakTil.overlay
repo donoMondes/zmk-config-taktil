@@ -67,7 +67,7 @@
         natural-scroll-x;
         palm_rejection;
 
-        bottom-beta = <100>;
+        bottom-beta = <2>;
         stationary-threshold = <5>;
 
         resolution_x = <2560>;
